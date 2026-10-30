@@ -1,0 +1,23 @@
+{
+  "name": "game-studio",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Small portrait puzzle games. Sorting Office is the first.",
+  "workspaces": [
+    "packages/*",
+    "games/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @game-studio/sorting-office",
+    "build": "npm run build -w @game-studio/sorting-office",
+    "preview": "npm run preview -w @game-studio/sorting-office",
+    "test": "npm run test -w @game-studio/sorting-office && npm run typecheck -w @game-studio/sorting-office",
+    "typecheck": "npm run typecheck -w @game-studio/sorting-office",
+    "test:e2e": "npm run test:e2e -w @game-studio/sorting-office",
+    "generate": "npm run generate -w @game-studio/sorting-office",
+    "zip": "npm run zip -w @game-studio/sorting-office"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
