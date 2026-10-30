@@ -82,6 +82,34 @@ describe('economy and portal', () => {
     expect(again.get().coins).toBe(0);
   });
 
+  it('keeps a first-release save playable', () => {
+    const storage = memoryStorage();
+    storage.setItem(
+      'sorting-office',
+      JSON.stringify({
+        v: 1,
+        sound: false,
+        coins: 80,
+        unlocked: 9,
+        best: { '9': 2 },
+        extraDock: false,
+        widerBay: true,
+        undos: 1,
+        shuffles: 0,
+        dailyLast: '2026-10-29',
+        dailyStreak: 4,
+      }),
+    );
+    const store = new SaveStore('sorting-office', defaultSave(), storage);
+    const save = store.get();
+    expect(save.coins).toBe(80);
+    expect(save.unlocked).toBe(9);
+    expect(save.best['9']).toBe(2);
+    expect(save.widerBay).toBe(true);
+    expect(save.expressSeen).toEqual({});
+    expect(save.sound).toBe(false);
+  });
+
   it('records CrazyGames lifecycle calls on the stub', async () => {
     const inner = new InstantPortal();
     const portal = new Portal(inner);

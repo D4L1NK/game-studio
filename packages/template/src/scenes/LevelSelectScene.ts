@@ -59,13 +59,28 @@ export class LevelSelectScene extends Phaser.Scene {
       const y = originY + row * (cellH + gapY) + cellH / 2;
       const unlocked = shell.isUnlocked(level.id);
       const stars = shell.starsFor(level.id);
+      const express = level.tag === 'very-hard';
       const g = this.add.graphics();
       g.fillStyle(unlocked ? theme.panel : 0xe7d7c0, 1);
       g.fillRoundedRect(-cellW / 2, -cellH / 2, cellW, cellH, 14);
-      g.lineStyle(2, theme.ink, unlocked ? 0.12 : 0.05);
-      g.strokeRoundedRect(-cellW / 2, -cellH / 2, cellW, cellH, 14);
+      g.lineStyle(express ? 3 : 2, express ? theme.danger : theme.ink, unlocked ? (express ? 0.95 : 0.12) : 0.2);
+      g.strokeRoundedRect(-cellW / 2 + 1, -cellH / 2 + 1, cellW - 2, cellH - 2, 13);
+      const bits: Phaser.GameObjects.GameObject[] = [g];
+      if (express) {
+        const badge = this.add
+          .text(0, -cellH / 2 + 14, 'EXPRESS', {
+            fontFamily: theme.fontBody,
+            fontSize: '9px',
+            color: '#fff8ee',
+            backgroundColor: '#a33b32',
+            padding: { x: 4, y: 2 },
+            fontStyle: '700',
+          })
+          .setOrigin(0.5);
+        bits.push(badge);
+      }
       const label = this.add
-        .text(0, -12, unlocked ? String(level.id) : '·', {
+        .text(0, express ? -4 : -12, unlocked ? String(level.id) : '·', {
           fontFamily: theme.fontTitle,
           fontSize: '26px',
           color: unlocked ? '#2b241b' : '#a89480',
@@ -78,7 +93,7 @@ export class LevelSelectScene extends Phaser.Scene {
           color: stars > 0 ? '#c4842a' : '#b5a28c',
         })
         .setOrigin(0.5);
-      const cell = this.add.container(x, y, [g, label, starText]);
+      const cell = this.add.container(x, y, [...bits, label, starText]);
       content.add(cell);
       if (unlocked) {
         cell.setSize(cellW, cellH);

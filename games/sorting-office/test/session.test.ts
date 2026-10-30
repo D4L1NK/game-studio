@@ -11,6 +11,8 @@ const autoload: LevelDef = {
     { color: 'teal', capacity: 1 },
   ],
   par: 1,
+  tag: 'medium',
+  minPeak: 1,
 };
 
 describe('session rules', () => {
@@ -45,6 +47,8 @@ describe('session rules', () => {
         { color: 'teal', capacity: 6 },
       ],
       par: 5,
+      tag: 'hard',
+      minPeak: 5,
     };
     const session = createSession(level);
     for (const index of [1, 2, 3, 4, 5]) expect(tap(session, index).ok).toBe(true);
@@ -67,6 +71,8 @@ describe('session rules', () => {
         { color: 'teal', capacity: 1 },
       ],
       par: 1,
+      tag: 'medium',
+      minPeak: 1,
     };
     const plain = createSession(level);
     expect(destination(plain, 'teal')).toBe('dock');

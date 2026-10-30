@@ -1,47 +1,116 @@
 import Phaser from 'phaser';
-import { colorOf, type SymbolKind } from '../content/palette';
+import { PALETTE, colorOf, type ParcelColor, type SymbolKind } from '../content/palette';
 
-export function drawParcel(
-  graphics: Phaser.GameObjects.Graphics,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  colorId: string,
-  buried: boolean,
-): void {
-  const color = colorOf(colorId);
-  const shade = buried ? 0.78 : 1;
-  graphics.fillStyle(color.dark, shade);
-  graphics.fillRoundedRect(x + 2, y + 3, width, height, 10);
-  graphics.fillStyle(color.fill, shade);
-  graphics.fillRoundedRect(x, y, width, height, 10);
-  const symbolY = buried ? y + height - 13 : y + height * 0.42;
-  if (!buried) {
-    graphics.fillStyle(0xfff8ee, 0.85);
-    graphics.fillRect(x + 7, y + height * 0.62, width - 14, 5);
+const PARCEL_W = 128;
+const PARCEL_H = 140;
+const VAN_W = 280;
+const VAN_H = 150;
+
+export function parcelKey(colorId: string): string {
+  return `depot-parcel-${colorId}`;
+}
+
+export function vanKey(colorId: string): string {
+  return `depot-van-${colorId}`;
+}
+
+export function ensureDepotArt(scene: Phaser.Scene): void {
+  if (scene.textures.exists(parcelKey(PALETTE[0]!.id))) return;
+  for (const color of PALETTE) {
+    bakeParcel(scene, color);
+    bakeVan(scene, color);
   }
-  graphics.fillStyle(0xfff8ee, buried ? 0.9 : 0.95);
-  drawSymbol(graphics, x + width / 2, symbolY, color.symbol, buried ? 5 : 6.5);
-  if (!buried) {
-    graphics.lineStyle(2, 0xfff8ee, 0.35);
-    graphics.strokeRoundedRect(x + 1.5, y + 1.5, width - 3, height - 3, 9);
+  if (!scene.textures.exists('depot-spark')) {
+    const spark = new Phaser.GameObjects.Graphics(scene);
+    spark.fillStyle(0xfff6e4, 1);
+    spark.fillCircle(8, 8, 6);
+    spark.generateTexture('depot-spark', 16, 16);
+    spark.destroy();
   }
 }
 
-function drawSymbol(
-  graphics: Phaser.GameObjects.Graphics,
-  cx: number,
-  cy: number,
-  kind: SymbolKind,
-  radius: number,
-): void {
+function bakeParcel(scene: Phaser.Scene, color: ParcelColor): void {
+  const g = new Phaser.GameObjects.Graphics(scene);
+  g.fillStyle(0x2b241b, 0.2);
+  g.fillEllipse(64, 128, 96, 16);
+
+  g.fillStyle(color.dark, 1);
+  g.fillRoundedRect(14, 22, 100, 100, 14);
+  g.fillStyle(color.fill, 1);
+  g.fillRoundedRect(14, 14, 100, 96, 14);
+  g.fillStyle(lighten(color.fill), 1);
+  g.fillRoundedRect(22, 20, 84, 24, 8);
+
+  g.fillStyle(0xf4e4bc, 0.95);
+  g.fillRect(54, 14, 20, 100);
+  g.fillStyle(0xe7d3a1, 0.95);
+  g.fillRect(20, 62, 88, 12);
+  g.fillStyle(0xc4a574, 0.55);
+  g.fillCircle(64, 68, 2.6);
+
+  g.fillStyle(0xfff8ee, 0.96);
+  g.fillRoundedRect(22, 78, 46, 30, 5);
+  g.lineStyle(2, color.dark, 0.35);
+  g.strokeRoundedRect(22, 78, 46, 30, 5);
+
+  g.fillStyle(0xfff8ee, 1);
+  drawSymbol(g, 92, 42, color.symbol, 13);
+  g.lineStyle(3, 0xfff8ee, 0.9);
+  g.strokeCircle(92, 42, 18);
+
+  g.generateTexture(parcelKey(color.id), PARCEL_W, PARCEL_H);
+  g.destroy();
+}
+
+function bakeVan(scene: Phaser.Scene, color: ParcelColor): void {
+  const g = new Phaser.GameObjects.Graphics(scene);
+  g.fillStyle(0x2b241b, 0.18);
+  g.fillEllipse(150, 132, 210, 24);
+
+  g.fillStyle(0x2c2416, 1);
+  g.fillRoundedRect(18, 38, 86, 78, 16);
+  g.fillStyle(color.fill, 1);
+  g.fillRoundedRect(78, 28, 176, 88, 18);
+  g.fillStyle(color.dark, 1);
+  g.fillRect(78, 28, 10, 88);
+  g.fillStyle(lighten(color.fill), 0.55);
+  g.fillRoundedRect(96, 38, 70, 22, 6);
+
+  g.fillStyle(0xd7e4ea, 1);
+  g.fillRoundedRect(30, 50, 46, 32, 8);
+  g.fillStyle(0xffffff, 0.55);
+  g.fillRoundedRect(36, 54, 16, 8, 3);
+
+  g.fillStyle(0xfff8ee, 1);
+  g.fillCircle(24, 78, 5);
+  g.fillStyle(0xf0c14a, 1);
+  g.fillRoundedRect(236, 58, 10, 16, 3);
+
+  g.fillStyle(0x241c14, 1);
+  g.fillCircle(78, 118, 18);
+  g.fillCircle(214, 118, 18);
+  g.fillStyle(0xc4a574, 1);
+  g.fillCircle(78, 118, 8);
+  g.fillCircle(214, 118, 8);
+
+  g.generateTexture(vanKey(color.id), VAN_W, VAN_H);
+  g.destroy();
+}
+
+function lighten(color: number): number {
+  const r = Math.min(255, ((color >> 16) & 255) + 36);
+  const g = Math.min(255, ((color >> 8) & 255) + 28);
+  const b = Math.min(255, (color & 255) + 22);
+  return (r << 16) | (g << 8) | b;
+}
+
+function drawSymbol(g: Phaser.GameObjects.Graphics, cx: number, cy: number, kind: SymbolKind, radius: number): void {
   if (kind === 'circle') {
-    graphics.fillCircle(cx, cy, radius);
+    g.fillCircle(cx, cy, radius * 0.72);
     return;
   }
   if (kind === 'diamond') {
-    graphics.fillPoints(
+    g.fillPoints(
       [
         { x: cx, y: cy - radius },
         { x: cx + radius, y: cy },
@@ -55,23 +124,21 @@ function drawSymbol(
   if (kind === 'star') {
     const points: Phaser.Types.Math.Vector2Like[] = [];
     for (let i = 0; i < 10; i += 1) {
-      const arm = i % 2 === 0 ? radius : radius * 0.45;
+      const arm = i % 2 === 0 ? radius : radius * 0.42;
       const angle = -Math.PI / 2 + (i * Math.PI) / 5;
       points.push({ x: cx + Math.cos(angle) * arm, y: cy + Math.sin(angle) * arm });
     }
-    graphics.fillPoints(points, true);
+    g.fillPoints(points, true);
     return;
   }
   if (kind === 'heart') {
-    graphics.fillCircle(cx - radius * 0.38, cy - radius * 0.2, radius * 0.42);
-    graphics.fillCircle(cx + radius * 0.38, cy - radius * 0.2, radius * 0.42);
-    graphics.fillTriangle(cx - radius, cy - radius * 0.05, cx + radius, cy - radius * 0.05, cx, cy + radius);
+    g.fillCircle(cx - radius * 0.36, cy - radius * 0.12, radius * 0.42);
+    g.fillCircle(cx + radius * 0.36, cy - radius * 0.12, radius * 0.42);
+    g.fillTriangle(cx - radius, cy, cx + radius, cy, cx, cy + radius);
     return;
   }
   if (kind === 'leaf') {
-    graphics.fillEllipse(cx, cy, radius * 1.3, radius * 1.8);
-    graphics.fillStyle(0x2c5a40, 0.35);
-    graphics.fillRect(cx - 0.8, cy - radius, 1.6, radius * 2);
+    g.fillEllipse(cx, cy, radius * 1.15, radius * 1.7);
     return;
   }
   const hex: Phaser.Types.Math.Vector2Like[] = [];
@@ -79,42 +146,19 @@ function drawSymbol(
     const angle = -Math.PI / 2 + (i * Math.PI) / 3;
     hex.push({ x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius });
   }
-  graphics.fillPoints(hex, true);
-}
-
-export function drawVan(
-  graphics: Phaser.GameObjects.Graphics,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  colorId: string,
-): void {
-  const color = colorOf(colorId);
-  const cabW = Math.max(18, width * 0.28);
-  graphics.fillStyle(0x2b241b, 1);
-  graphics.fillRoundedRect(x, y + height * 0.18, width, height * 0.62, 8);
-  graphics.fillStyle(color.fill, 1);
-  graphics.fillRoundedRect(x + cabW, y + height * 0.18, width - cabW - 4, height * 0.62, 8);
-  graphics.fillStyle(0xfff8ee, 0.9);
-  graphics.fillRoundedRect(x + 6, y + height * 0.3, cabW * 0.55, height * 0.28, 3);
-  graphics.fillStyle(0x2b241b, 1);
-  const wheel = Math.max(4, height * 0.14);
-  graphics.fillCircle(x + cabW * 0.7, y + height * 0.84, wheel);
-  graphics.fillCircle(x + width * 0.72, y + height * 0.84, wheel);
-  graphics.fillStyle(0xc4a574, 1);
-  graphics.fillCircle(x + cabW * 0.7, y + height * 0.84, wheel * 0.45);
-  graphics.fillCircle(x + width * 0.72, y + height * 0.84, wheel * 0.45);
+  g.fillPoints(hex, true);
 }
 
 export function drawAwning(graphics: Phaser.GameObjects.Graphics, y: number, height: number): void {
   graphics.fillStyle(0x8d3d32, 1);
   graphics.fillRect(0, y, 390, height);
-  graphics.fillStyle(0xf4e6cf, 1);
-  const stripe = 28;
-  for (let x = 0; x < 390; x += stripe * 2) {
-    graphics.fillRect(x, y, stripe, height);
-  }
+  graphics.fillStyle(0xf6efe4, 1);
+  const stripe = 26;
+  for (let x = 0; x < 390; x += stripe * 2) graphics.fillRect(x, y, stripe, height);
   graphics.fillStyle(0x2b241b, 1);
-  graphics.fillRect(0, y + height - 6, 390, 6);
+  graphics.fillRect(0, y + height - 8, 390, 8);
+  graphics.fillStyle(0xc4a574, 1);
+  for (let x = 18; x < 390; x += 48) graphics.fillCircle(x, y + height - 2, 3);
 }
+
+export { colorOf };

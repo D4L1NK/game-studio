@@ -1,3 +1,6 @@
+import '@fontsource/fraunces/latin-600.css';
+import '@fontsource/nunito/latin-600.css';
+import '@fontsource/nunito/latin-700.css';
 import Phaser from 'phaser';
 import {
   BootScene,
@@ -16,7 +19,7 @@ import {
   scaleGame,
   type ShellConfig,
 } from '@game-studio/template';
-import { drawAwning, drawParcel, drawVan } from './view/art';
+import { drawAwning, ensureDepotArt, parcelKey, vanKey } from './view/art';
 import { DailyScene } from './scenes/DailyScene';
 import { DepotScene } from './scenes/DepotScene';
 import { PlayScene } from './scenes/PlayScene';
@@ -46,7 +49,7 @@ async function boot(): Promise<void> {
         continueLabel: continueLabel(data, total),
       };
     },
-    getLevels: () => LEVELS.map((level) => ({ id: level.id, name: level.name })),
+    getLevels: () => LEVELS.map((level) => ({ id: level.id, name: level.name, tag: level.tag })),
     starsFor: (levelId) => save.get().best[String(levelId)] ?? 0,
     isUnlocked: (levelId) => levelId <= save.get().unlocked,
     setSound: (on) => {
@@ -68,11 +71,12 @@ async function boot(): Promise<void> {
       scene.scene.start('daily');
     },
     decorateMenu: (scene) => {
+      ensureDepotArt(scene);
       const art = scene.add.graphics();
       drawAwning(art, 0, 86);
-      drawVan(art, 78, 318, 230, 100, 'terracotta');
-      drawParcel(art, 36, 360, 52, 46, 'teal', false);
-      drawParcel(art, 302, 368, 52, 46, 'mustard', false);
+      scene.add.image(196, 372, vanKey('terracotta')).setDisplaySize(240, 120);
+      scene.add.image(54, 392, parcelKey('teal')).setDisplaySize(70, 78);
+      scene.add.image(336, 396, parcelKey('mustard')).setDisplaySize(66, 74);
     },
   };
 

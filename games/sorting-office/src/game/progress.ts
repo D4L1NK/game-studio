@@ -13,6 +13,11 @@ export interface SaveData {
   shuffles: number;
   dailyLast: string;
   dailyStreak: number;
+  /**
+   * Very-hard intro cards already dismissed, keyed by route id.
+   * Missing on saves from the first release; the loader fills `{}`.
+   */
+  expressSeen: Record<string, 1>;
 }
 
 export function defaultSave(): SaveData {
@@ -28,6 +33,7 @@ export function defaultSave(): SaveData {
     shuffles: 1,
     dailyLast: '',
     dailyStreak: 0,
+    expressSeen: {},
   };
 }
 

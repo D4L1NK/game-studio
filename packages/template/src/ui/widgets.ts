@@ -84,14 +84,37 @@ export function addButton(
 export function paintBackdrop(scene: Phaser.Scene, theme: Theme): void {
   const g = scene.add.graphics();
   g.fillStyle(theme.bgTop, 1);
-  g.fillRect(0, 0, 390, 520);
+  g.fillRect(0, 0, 390, 844);
+  g.fillStyle(0xf7edd8, 1);
+  g.fillRect(0, 0, 390, 168);
   g.fillStyle(theme.bgBottom, 1);
-  g.fillRect(0, 520, 390, 324);
+  g.fillRect(0, 168, 390, 532);
+
+  g.fillStyle(0xe7d3b0, 0.65);
+  for (let row = 0; row < 3; row += 1) {
+    for (let col = 0; col < 8; col += 1) {
+      const x = 16 + col * 46;
+      const y = 188 + row * 36;
+      g.fillRoundedRect(x, y, 38, 26, 4);
+      g.fillStyle(0xf6efe4, 0.35);
+      g.fillRoundedRect(x + 4, y + 4, 30, 8, 2);
+      g.fillStyle(0xe7d3b0, 0.65);
+    }
+  }
+
+  g.fillStyle(0xf6e7c1, 0.28);
+  g.fillEllipse(300, 120, 180, 90);
+
+  g.fillStyle(theme.woodDark, 1);
+  g.fillRect(0, 688, 390, 10);
   g.fillStyle(theme.wood, 1);
-  g.fillRect(0, 700, 390, 144);
-  g.lineStyle(2, theme.woodDark, 0.35);
-  for (let y = 722; y < 844; y += 22) {
-    g.lineBetween(0, y, 390, y);
+  g.fillRect(0, 698, 390, 146);
+  g.lineStyle(2, theme.woodDark, 0.28);
+  for (let y = 718; y < 844; y += 18) g.lineBetween(0, y, 390, y);
+  g.fillStyle(0x8d6a45, 0.35);
+  for (let x = 28; x < 390; x += 64) {
+    g.fillCircle(x, 742, 2);
+    g.fillCircle(x + 18, 796, 2);
   }
 }
 

@@ -12,7 +12,9 @@ The repo is a studio layout: a shared Phaser shell in `packages/template`, and t
 4. Parcels already on the dock climb aboard by themselves when their van arrives.
 5. The queue shows the next three vans. Clear every parcel to win.
 
-Stars reward a tidy dock. Three stars means you stayed within the route's planned peak; two stars allows one extra parcel waiting; one star is any clear. Coins from new star ratings are spent in the Depot.
+Stars reward a tidy dock. Three stars means you matched the route's minimum dock peak; two stars allows one extra parcel waiting; one star is any clear. Coins from new star ratings are spent in the Depot.
+
+Difficulty sawtooths. Routes 1 and 2 are a gentle tutorial. Every fifth route (5, 10, 15, 20, 25, 30) is an Express boss: the dock has almost no slack, and tapping the obvious parcel can lose. Between bosses the tag drops, then climbs again, and the later routes sit higher than the early ones. Each route is tagged easy, medium, hard, or very hard.
 
 Depot upgrades:
 

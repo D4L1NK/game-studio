@@ -58,24 +58,67 @@ test('loads the build and plays the start of a route', async ({ page }) => {
   expect(ours).toEqual([]);
 });
 
-test('portrait screens of menu, a route, and the depot', async ({ page }) => {
+test('portrait screens of menu, routes, play, win, and depot', async ({ page }) => {
   mkdirSync(ARTIFACTS, { recursive: true });
   await ready(page);
   await page.screenshot({ path: `${ARTIFACTS}/menu_portrait.png` });
 
+  const routes = await target(page, 'levels');
+  await page.mouse.click(routes.x, routes.y);
+  await page.waitForFunction(
+    () => (window as unknown as { __sortingOffice: { scene: string } }).__sortingOffice.scene === 'levels',
+  );
+  await page.screenshot({ path: `${ARTIFACTS}/level_select_portrait.png` });
+
+  const back = await target(page, 'back');
+  await page.mouse.click(back.x, back.y);
+  await page.waitForFunction(
+    () => (window as unknown as { __sortingOffice: { scene: string } }).__sortingOffice.scene === 'menu',
+  );
   const play = await target(page, 'play');
   await page.mouse.click(play.x, play.y);
   await page.waitForFunction(
     () => (window as unknown as { __sortingOffice: { scene: string } }).__sortingOffice.scene === 'play',
   );
-  const stack = await target(page, 'stack-0');
-  await page.mouse.click(stack.x, stack.y);
+  await page.screenshot({ path: `${ARTIFACTS}/easy_route_portrait.png` });
+
+  for (let step = 0; step < 3; step += 1) {
+    const stack = await page.evaluate(() => {
+      const bridge = (window as unknown as { __sortingOffice: { getTarget: (id: string) => Target | null } })
+        .__sortingOffice;
+      return bridge.getTarget('stack-0') ?? bridge.getTarget('stack-1') ?? bridge.getTarget('stack-2');
+    });
+    if (!stack) break;
+    await page.mouse.click(stack.x, stack.y);
+    await page.waitForTimeout(420);
+  }
   await page.waitForFunction(
-    () =>
-      (window as unknown as { __sortingOffice: { getState: () => { moves: number } } }).__sortingOffice.getState()
-        .moves >= 1,
+    () => (window as unknown as { __sortingOffice: { scene: string } }).__sortingOffice.scene === 'win',
   );
-  await page.screenshot({ path: `${ARTIFACTS}/level_portrait.png` });
+  await page.screenshot({ path: `${ARTIFACTS}/win_portrait.png` });
+
+  await page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('sorting-office') || '{}') as { unlocked?: number };
+    localStorage.setItem('sorting-office', JSON.stringify({ ...raw, unlocked: 32, expressSeen: {} }));
+  });
+  await page.goto('./');
+  await page.waitForFunction(() => (window as unknown as { __sortingOffice?: { ready?: boolean } }).__sortingOffice?.ready);
+  const routesAgain = await target(page, 'levels');
+  await page.mouse.click(routesAgain.x, routesAgain.y);
+  await page.waitForFunction(
+    () => (window as unknown as { __sortingOffice: { scene: string } }).__sortingOffice.scene === 'levels',
+  );
+  const boss = await target(page, 'level-5');
+  await page.mouse.click(boss.x, boss.y);
+  await page.waitForFunction(
+    () => (window as unknown as { __sortingOffice: { scene: string } }).__sortingOffice.scene === 'express',
+  );
+  const sortIt = await target(page, 'express-start');
+  await page.mouse.click(sortIt.x, sortIt.y);
+  await page.waitForFunction(
+    () => (window as unknown as { __sortingOffice: { scene: string } }).__sortingOffice.scene === 'play',
+  );
+  await page.screenshot({ path: `${ARTIFACTS}/very_hard_route_portrait.png` });
 
   await page.goto('./');
   await page.waitForFunction(() => (window as unknown as { __sortingOffice?: { ready?: boolean } }).__sortingOffice?.ready);
