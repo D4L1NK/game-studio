@@ -4,6 +4,7 @@ import type { Theme } from './theme';
 export interface LevelBadge {
   id: number;
   name: string;
+  tag?: 'easy' | 'medium' | 'hard' | 'very-hard';
 }
 
 export interface ShellProgress {

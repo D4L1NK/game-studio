@@ -18,6 +18,8 @@ const impossible: LevelDef = {
     { color: 'teal', capacity: 6 },
   ],
   par: 0,
+  tag: 'hard',
+  minPeak: 5,
 };
 
 describe('solver', () => {

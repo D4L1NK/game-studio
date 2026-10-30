@@ -1,3 +1,5 @@
+export type DifficultyTag = 'easy' | 'medium' | 'hard' | 'very-hard';
+
 export interface VanDef {
   color: string;
   capacity: number;
@@ -9,8 +11,11 @@ export interface LevelDef {
   /** Each stack is bottom → top. Only the top parcel can be tapped. */
   stacks: string[][];
   vans: VanDef[];
-  /** Dock peak of a designed clear. Three stars means matching this or better. */
+  /** Minimum dock peak of any clear. Three stars means matching this. */
   par: number;
+  tag: DifficultyTag;
+  /** Solver minimum dock peak with a 5-slot dock and no wider bay. Same as par. */
+  minPeak: number;
 }
 
 export interface Parcel {

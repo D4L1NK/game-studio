@@ -28,8 +28,8 @@ export const depotTheme: Theme = {
   muted: 0x8a7660,
   good: 0x3e7c59,
   danger: 0xa33b32,
-  fontTitle: '"Liberation Serif", Palatino, Georgia, serif',
-  fontBody: '"Liberation Sans", "Segoe UI", sans-serif',
+  fontTitle: 'Fraunces, Palatino, Georgia, serif',
+  fontBody: 'Nunito, "Segoe UI", sans-serif',
 };
 
 export const DESIGN_WIDTH = 390;

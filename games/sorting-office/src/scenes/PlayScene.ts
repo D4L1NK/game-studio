@@ -30,7 +30,8 @@ import {
   vanViews,
 } from '../game/session';
 import type { LevelDef, Session } from '../game/types';
-import { drawParcel, drawVan } from '../view/art';
+import { ensureDepotArt, parcelKey, vanKey } from '../view/art';
+import { expressBlurb } from '../game/difficulty';
 
 const PREVIEW = 3;
 const HINTS: Record<number, string> = {
@@ -54,6 +55,12 @@ export class PlayScene extends Phaser.Scene {
   private doubled = false;
   private earned = 0;
   private stars: 1 | 2 | 3 = 1;
+  private flying = false;
+  private vanImage: Phaser.GameObjects.Image | null = null;
+  private vanAnchor = { x: 106, y: 168 };
+  private dockAnchors: Array<{ x: number; y: number }> = [];
+  private readonly motion =
+    typeof matchMedia === 'undefined' || !matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   constructor() {
     super({ key: 'play', active: false });
@@ -80,6 +87,7 @@ export class PlayScene extends Phaser.Scene {
     this.settled = false;
     this.doubled = false;
     this.earned = 0;
+    ensureDepotArt(this);
     paintBackdrop(this, shell.theme);
     this.layer = this.add.container(0, 0);
     this.modal = this.add.container(0, 0).setDepth(20);
@@ -92,7 +100,14 @@ export class PlayScene extends Phaser.Scene {
       won: isWin(this.session),
     }));
     this.render();
-    this.markPlay(true);
+    const seen = data.expressSeen ?? {};
+    if (level.tag === 'very-hard' && !seen[String(level.id)]) {
+      this.locked = true;
+      this.showExpress();
+    } else {
+      this.markPlay(true);
+      this.arriveVan();
+    }
     this.events.on('resume', () => {
       if (!this.locked) this.markPlay(true);
       publishTargets('play', this.targets);
@@ -124,6 +139,7 @@ export class PlayScene extends Phaser.Scene {
     const g = this.add.graphics();
     this.layer.add(g);
     this.targets = {};
+    this.vanImage = null;
 
     this.layer.add(
       this.add
@@ -167,8 +183,24 @@ export class PlayScene extends Phaser.Scene {
     g.fillRoundedRect(18, 112, 358, 132, 16);
     g.fillStyle(0xfff8ee, 1);
     g.fillRoundedRect(16, 108, 358, 132, 16);
+    if (this.level.tag === 'very-hard') {
+      this.layer.add(
+        this.add
+          .text(168, 28, 'EXPRESS', {
+            fontFamily: theme.fontBody,
+            fontSize: '11px',
+            color: '#fff8ee',
+            backgroundColor: '#a33b32',
+            padding: { x: 6, y: 3 },
+            fontStyle: '700',
+          })
+          .setOrigin(0, 0),
+      );
+    }
     if (views.current) {
-      drawVan(g, 32, 128, 148, 78, views.current.color);
+      this.vanImage = this.add.image(106, 168, vanKey(views.current.color)).setDisplaySize(150, 80);
+      this.layer.add(this.vanImage);
+      this.vanAnchor = { x: 106, y: 168 };
       const info = colorOf(views.current.color);
       this.layer.add(
         this.add
@@ -206,7 +238,8 @@ export class PlayScene extends Phaser.Scene {
       g.fillRoundedRect(x, 274, 114, 62, 12);
       g.lineStyle(2, van.early ? theme.accent : theme.ink, van.early ? 0.9 : 0.08);
       g.strokeRoundedRect(x, 274, 114, 62, 12);
-      drawVan(g, x + 8, 282, 46, 40, van.color);
+      const mini = this.add.image(x + 30, 304, vanKey(van.color)).setDisplaySize(48, 28);
+      this.layer.add(mini);
       const info = colorOf(van.color);
       this.layer.add(
         this.add
@@ -314,7 +347,11 @@ export class PlayScene extends Phaser.Scene {
       stack.forEach((parcel, depth) => {
         const buried = depth !== stack.length - 1;
         const y = baseline - parcelH - depth * step;
-        drawParcel(g, x, y, parcelW, parcelH, parcel.color, buried);
+        const sprite = this.add
+          .image(x + parcelW / 2, y + parcelH / 2, parcelKey(parcel.color))
+          .setDisplaySize(buried ? parcelW * 0.92 : parcelW, buried ? parcelH * 0.92 : parcelH)
+          .setAlpha(buried ? 0.88 : 1);
+        this.layer.add(sprite);
       });
       const top = stack[stack.length - 1];
       if (!top) return;
@@ -333,10 +370,11 @@ export class PlayScene extends Phaser.Scene {
     const total = capacity * slot + (capacity - 1) * gap;
     const start = (390 - total) / 2;
     const y = 708;
+    this.dockAnchors = [];
     this.layer.add(
       this.add
         .text(start, 688, `Dock  ${this.session.dock.length}/${capacity}   ·   peak ${this.session.peakDock}`, {
-          fontFamily: '"Liberation Sans", "Segoe UI", sans-serif',
+          fontFamily: '"Nunito", "Segoe UI", sans-serif',
           fontSize: '13px',
           color: '#2b241b',
         })
@@ -348,13 +386,21 @@ export class PlayScene extends Phaser.Scene {
       g.fillRoundedRect(x, y, slot, 52, 8);
       g.lineStyle(2, ink, 0.15);
       g.strokeRoundedRect(x, y, slot, 52, 8);
+      this.dockAnchors.push({ x: x + slot / 2, y: y + 26 });
       const parcel = this.session.dock[index];
-      if (parcel) drawParcel(g, x + 4, y + 4, slot - 8, 44, parcel.color, false);
+      if (parcel) {
+        const sprite = this.add.image(x + slot / 2, y + 26, parcelKey(parcel.color)).setDisplaySize(slot - 10, 46);
+        this.layer.add(sprite);
+      }
     }
   }
 
   private onTap(index: number): void {
-    if (this.locked) return;
+    if (this.locked || this.flying) return;
+    const from = this.targets[`stack-${index}`];
+    const color = this.session.stacks[index]?.[this.session.stacks[index].length - 1]?.color;
+    if (!from || !color) return;
+    const previousVan = this.session.vans[this.session.vanIndex]?.color;
     const result = tap(this.session, index);
     if (!result.ok) {
       if (isStuck(this.session)) this.openFail();
@@ -362,14 +408,195 @@ export class PlayScene extends Phaser.Scene {
       return;
     }
     this.audio.play(result.dest === 'dock' ? 'tap' : 'load');
-    if (result.departed) this.audio.play('depart');
+    if (result.won) this.locked = true;
+    this.flying = true;
     this.render();
-    if (result.won) {
-      this.audio.play('win');
-      void this.openWin();
-      return;
+    const dest =
+      result.dest === 'dock'
+        ? (this.dockAnchors[this.session.dock.length - 1] ?? this.vanAnchor)
+        : this.vanAnchor;
+    this.flyParcel(color, from, dest, () => {
+      this.flying = false;
+      if (result.departed) {
+        this.audio.play('full');
+        this.audio.play('depart');
+        this.departGhost(previousVan);
+      } else if (result.dest !== 'dock' && this.vanImage) {
+        this.tweens.add({
+          targets: this.vanImage,
+          scaleX: this.vanImage.scaleX * 1.06,
+          scaleY: this.vanImage.scaleY * 1.06,
+          yoyo: true,
+          duration: this.motion ? 120 : 1,
+        });
+      }
+      if (result.dest === 'dock' && this.session.dock.length >= this.session.dockCapacity - 1) this.warnDock();
+      if (result.won) {
+        this.audio.play('win');
+        this.starBurst(() => void this.openWin());
+        return;
+      }
+      if (isStuck(this.session)) this.openFail();
+    });
+  }
+
+  private flyParcel(
+    color: string,
+    from: { x: number; y: number; w: number; h: number },
+    dest: { x: number; y: number },
+    done: () => void,
+  ): void {
+    const flyer = this.add.image(from.x, from.y, parcelKey(color)).setDisplaySize(from.w, from.h).setDepth(30);
+    const duration = this.motion ? 230 : 1;
+    this.tweens.add({
+      targets: flyer,
+      scaleX: flyer.scaleX * 1.16,
+      scaleY: flyer.scaleY * 0.82,
+      duration: Math.min(80, duration),
+      yoyo: true,
+    });
+    this.tweens.add({
+      targets: flyer,
+      x: dest.x,
+      y: dest.y,
+      duration,
+      ease: 'Cubic.easeIn',
+      onComplete: () => {
+        this.puff(dest.x, dest.y, colorOf(color).fill);
+        flyer.destroy();
+        done();
+      },
+    });
+  }
+
+  private puff(x: number, y: number, tint: number): void {
+    const count = this.motion ? 7 : 0;
+    for (let i = 0; i < count; i += 1) {
+      const dot = this.add.image(x, y, 'depot-spark').setTint(tint).setDepth(31).setScale(0.7);
+      const angle = (Math.PI * 2 * i) / count;
+      this.tweens.add({
+        targets: dot,
+        x: x + Math.cos(angle) * 26,
+        y: y + Math.sin(angle) * 16,
+        alpha: 0,
+        scale: 0.15,
+        duration: 280,
+        onComplete: () => dot.destroy(),
+      });
     }
-    if (isStuck(this.session)) this.openFail();
+  }
+
+  private warnDock(): void {
+    this.audio.play('warn');
+    if (!this.motion) return;
+    this.cameras.main.shake(160, 0.005);
+    const flash = this.add.rectangle(195, 422, 390, 844, 0xa33b32, 0.28).setDepth(28);
+    this.tweens.add({ targets: flash, alpha: 0, duration: 280, onComplete: () => flash.destroy() });
+  }
+
+  private departGhost(color: string | undefined): void {
+    if (!color) return;
+    const ghost = this.add.image(this.vanAnchor.x, this.vanAnchor.y, vanKey(color)).setDisplaySize(150, 80).setDepth(8);
+    this.puff(this.vanAnchor.x, this.vanAnchor.y, 0xfff8ee);
+    this.tweens.add({
+      targets: ghost,
+      x: this.vanAnchor.x + 220,
+      alpha: 0,
+      duration: this.motion ? 380 : 1,
+      ease: 'Cubic.easeIn',
+      onComplete: () => ghost.destroy(),
+    });
+    if (this.vanImage) {
+      const rest = this.vanAnchor.x;
+      this.vanImage.x = rest - 36;
+      this.tweens.add({
+        targets: this.vanImage,
+        x: rest,
+        duration: this.motion ? 320 : 1,
+        ease: 'Back.easeOut',
+      });
+    }
+  }
+
+  private arriveVan(): void {
+    if (!this.vanImage || !this.motion) return;
+    const rest = this.vanImage.x;
+    this.vanImage.x = rest - 28;
+    this.vanImage.alpha = 0.2;
+    this.tweens.add({ targets: this.vanImage, x: rest, alpha: 1, duration: 280, ease: 'Back.easeOut' });
+  }
+
+  private starBurst(done: () => void): void {
+    const count = this.motion ? 10 : 0;
+    for (let i = 0; i < count; i += 1) {
+      const star = this.add
+        .text(195, 430, '★', { fontFamily: 'Nunito, sans-serif', fontSize: '22px', color: '#e0a83a' })
+        .setOrigin(0.5)
+        .setDepth(32);
+      const angle = (Math.PI * 2 * i) / count;
+      this.tweens.add({
+        targets: star,
+        x: 195 + Math.cos(angle) * 120,
+        y: 430 + Math.sin(angle) * 90,
+        alpha: 0,
+        scale: 1.4,
+        duration: 520,
+        onComplete: () => star.destroy(),
+      });
+    }
+    this.time.delayedCall(this.motion ? 420 : 1, done);
+  }
+
+  private showExpress(): void {
+    const shell = readShell(this);
+    const theme = shell.theme;
+    this.modal.removeAll(true);
+    const dim = this.add.rectangle(195, 422, 390, 844, 0x1c1712, 0.45).setInteractive();
+    this.modal.add(dim);
+    const panel = addPanel(this, 36, 250, 318, 280, theme, 22);
+    this.modal.add(panel);
+    this.modal.add(
+      this.add
+        .text(195, 292, 'Express', {
+          fontFamily: theme.fontTitle,
+          fontSize: '36px',
+          color: '#a33b32',
+        })
+        .setOrigin(0.5),
+    );
+    this.modal.add(
+      this.add
+        .text(195, 360, expressBlurb(), {
+          fontFamily: theme.fontBody,
+          fontSize: '16px',
+          color: '#2b241b',
+          align: 'center',
+          wordWrap: { width: 260 },
+        })
+        .setOrigin(0.5),
+    );
+    const start = addButton(this, {
+      x: 195,
+      y: 470,
+      width: 220,
+      height: 52,
+      label: 'Sort it',
+      theme,
+      variant: 'primary',
+      onClick: () => {
+        this.save.update((draft) => {
+          draft.expressSeen[String(this.level.id)] = 1;
+        });
+        this.audio.play('ui');
+        this.modal.removeAll(true);
+        this.locked = false;
+        publishTargets('play', this.targets);
+        this.markPlay(true);
+        this.arriveVan();
+      },
+    });
+    this.modal.add(start.container);
+    publishTargets('express', { 'express-start': { x: 195, y: 470, w: 220, h: 52 } });
   }
 
   private onUndo(): void {
@@ -451,6 +678,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private showWin(): void {
+    this.render();
     const shell = readShell(this);
     const theme = shell.theme;
     this.modal.removeAll(true);
