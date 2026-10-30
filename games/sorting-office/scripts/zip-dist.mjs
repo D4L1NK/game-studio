@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, rmSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -12,6 +12,7 @@ if (!existsSync(index)) {
 }
 
 const zipPath = resolve(root, 'sorting-office-crazygames.zip');
+rmSync(zipPath, { force: true });
 execFileSync('zip', ['-r', '-9', '-q', zipPath, '.'], { cwd: dist, stdio: 'inherit' });
 const bytes = statSync(zipPath).size;
 const mb = bytes / (1024 * 1024);
